@@ -1,0 +1,24 @@
+{
+  "name": "vericrypt",
+  "version": "1.0.0",
+  "description": "A secure message encryption and signing package using Ed25519 and X25519 keys",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "encryption",
+    "signing",
+    "ed25519",
+    "x25519",
+    "crypto",
+    "security"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1"
+  },
+  "type": "commonjs"
+}
