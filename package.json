@@ -1,7 +1,7 @@
 {
   "name": "vericrypt",
-  "version": "1.0.0",
-  "description": "A secure message encryption and signing package using Ed25519 and X25519 keys",
+  "version": "1.0.1",
+  "description": "A secure message encryption and signing package using Ed25519 for signing and X25519 for encryption",
   "main": "index.js",
   "types": "index.d.ts",
   "files": [
@@ -27,16 +27,19 @@
     "cryptography",
     "asymmetric-encryption"
   ],
-  "author": "",
+  "author": {
+    "name": "Ayush Bansal",
+    "url": "https://github.com/ab-sc4t"
+  },
   "license": "ISC",
   "dependencies": {
-    "tweetnacl": "^1.0.3",
-    "tweetnacl-util": "^0.15.1"
+    "@noble/curves": "^1.2.0",
+    "@noble/hashes": "^1.3.0"
   },
   "type": "commonjs",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/vericrypt.git"
+    "url": "https://github.com/ab-sc4t/VeriCrypt"
   },
   "bugs": {
     "url": "https://github.com/yourusername/vericrypt/issues"
