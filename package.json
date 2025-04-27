@@ -3,8 +3,16 @@
   "version": "1.0.0",
   "description": "A secure message encryption and signing package using Ed25519 and X25519 keys",
   "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test.js",
+    "prepublishOnly": "npm test"
   },
   "keywords": [
     "encryption",
@@ -12,7 +20,12 @@
     "ed25519",
     "x25519",
     "crypto",
-    "security"
+    "security",
+    "end-to-end",
+    "encryption",
+    "digital-signature",
+    "cryptography",
+    "asymmetric-encryption"
   ],
   "author": "",
   "license": "ISC",
@@ -20,5 +33,16 @@
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1"
   },
-  "type": "commonjs"
+  "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/vericrypt.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/vericrypt/issues"
+  },
+  "homepage": "https://github.com/yourusername/vericrypt#readme",
+  "engines": {
+    "node": ">=12.0.0"
+  }
 }
