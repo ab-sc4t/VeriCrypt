@@ -1,6 +1,6 @@
 {
   "name": "vericrypt",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A secure message encryption and signing package using Ed25519 for signing and X25519 for encryption",
   "main": "index.js",
   "types": "index.d.ts",
@@ -42,9 +42,8 @@
     "url": "https://github.com/ab-sc4t/VeriCrypt"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/vericrypt/issues"
+    "url": "https://github.com/ab-sc4t/VeriCrypt/issues"
   },
-  "homepage": "https://github.com/yourusername/vericrypt#readme",
   "engines": {
     "node": ">=12.0.0"
   }
