@@ -1,63 +1,23 @@
-const { generateMnemonic, mnemonicToSeedSync } = require("bip39");
-const { derivePath } = require("ed25519-hd-key");
-const { ed25519, x25519 } = require('@noble/curves/ed25519');
-const { edwardsToMontgomeryPub, edwardsToMontgomeryPriv } = require('@noble/curves/ed25519');
-
-/**
- * Generates a new mnemonic phrase
- * @returns {string} 12-word mnemonic phrase
- */
-function generateMnemonicPhrase() {
-    return generateMnemonic();
-}
-
-/**
- * Generates a new Ed25519 key pair from mnemonic and path
- * @param {string} mnemonic - BIP39 mnemonic phrase
- * @param {string} path - HD derivation path (default: "m/44'/0'/0'/0'/0'")
- * @returns {Object} Object containing base64 encoded private and public keys
- */
-function generateKeyPairFromMnemonic(mnemonic, path = "m/44'/0'/0'/0'/0'") {
-    const seed = mnemonicToSeedSync(mnemonic);
-    const { key: privateKey } = derivePath(path, seed.toString("hex"));
-    
-    // Get Ed25519 public key for signing
-    const signingPublicKey = ed25519.getPublicKey(privateKey);
-    
-    // Convert to X25519 for encryption
-    const encryptionPrivateKey = edwardsToMontgomeryPriv(privateKey);
-    const encryptionPublicKey = edwardsToMontgomeryPub(signingPublicKey);
-    
-    return {
-        // For encryption (X25519)
-        encryptionPrivateKey: Buffer.from(encryptionPrivateKey).toString('base64'),
-        encryptionPublicKey: Buffer.from(encryptionPublicKey).toString('base64'),
-        // For signing (Ed25519)
-        signingPrivateKey: Buffer.from(privateKey).toString('base64'),
-        signingPublicKey: Buffer.from(signingPublicKey).toString('base64')
-    };
-}
+const nacl = require('tweetnacl');
+const naclUtil = require('tweetnacl-util');
 
 /**
  * Generates a new Ed25519 key pair
  * @returns {Object} Object containing base64 encoded private and public keys
  */
 function generateKeyPair() {
-    // Generate random Ed25519 keypair for signing
-    const signingPrivateKey = ed25519.utils.randomPrivateKey();
-    const signingPublicKey = ed25519.getPublicKey(signingPrivateKey);
-    
-    // Convert to X25519 for encryption
-    const encryptionPrivateKey = edwardsToMontgomeryPriv(signingPrivateKey);
-    const encryptionPublicKey = edwardsToMontgomeryPub(signingPublicKey);
+    // Generate a key pair for encryption (X25519)
+    const encryptionKeyPair = nacl.box.keyPair();
+    // Generate a key pair for signing (Ed25519)
+    const signingKeyPair = nacl.sign.keyPair();
     
     return {
-        // For encryption (X25519)
-        encryptionPrivateKey: Buffer.from(encryptionPrivateKey).toString('base64'),
-        encryptionPublicKey: Buffer.from(encryptionPublicKey).toString('base64'),
-        // For signing (Ed25519)
-        signingPrivateKey: Buffer.from(signingPrivateKey).toString('base64'),
-        signingPublicKey: Buffer.from(signingPublicKey).toString('base64')
+        // For encryption
+        encryptionPrivateKey: naclUtil.encodeBase64(encryptionKeyPair.secretKey),
+        encryptionPublicKey: naclUtil.encodeBase64(encryptionKeyPair.publicKey),
+        // For signing
+        signingPrivateKey: naclUtil.encodeBase64(signingKeyPair.secretKey),
+        signingPublicKey: naclUtil.encodeBase64(signingKeyPair.publicKey)
     };
 }
 
@@ -67,15 +27,15 @@ function generateKeyPair() {
  * @param {string} signingPrivateKey - Sender's Ed25519 private key (base64 encoded)
  * @returns {Object} Object containing the message and its signature
  */
-async function sign(message, signingPrivateKey) {
-    const privateKeyBytes = Buffer.from(signingPrivateKey, 'base64');
-    const messageBytes = Buffer.from(message, 'utf8');
+function sign(message, signingPrivateKey) {
+    const privateKeyBytes = naclUtil.decodeBase64(signingPrivateKey);
+    const messageBytes = naclUtil.decodeUTF8(message);
     
-    const signature = await ed25519.sign(messageBytes, privateKeyBytes);
+    const signature = nacl.sign.detached(messageBytes, privateKeyBytes);
     
     return {
         message: message,
-        signature: Buffer.from(signature).toString('base64')
+        signature: naclUtil.encodeBase64(signature)
     };
 }
 
@@ -85,76 +45,72 @@ async function sign(message, signingPrivateKey) {
  * @param {string} signingPublicKey - Sender's Ed25519 public key (base64 encoded)
  * @returns {boolean} True if verification succeeds, false otherwise
  */
-async function verify(signedData, signingPublicKey) {
-    const publicKeyBytes = Buffer.from(signingPublicKey, 'base64');
-    const messageBytes = Buffer.from(signedData.message, 'utf8');
-    const signature = Buffer.from(signedData.signature, 'base64');
+function verify(signedData, signingPublicKey) {
+    const publicKeyBytes = naclUtil.decodeBase64(signingPublicKey);
+    const messageBytes = naclUtil.decodeUTF8(signedData.message);
+    const signature = naclUtil.decodeBase64(signedData.signature);
     
-    return await ed25519.verify(signature, messageBytes, publicKeyBytes);
+    return nacl.sign.detached.verify(
+        messageBytes,
+        signature,
+        publicKeyBytes
+    );
 }
 
 /**
  * Encrypts a message using the receiver's public key
  * @param {string} message - Message to encrypt
  * @param {string} receiverEncryptionPublicKey - Receiver's X25519 public key (base64 encoded)
- * @returns {Object} Object containing encrypted message and ephemeral public key
+ * @returns {Object} Object containing encrypted message and nonce
  */
 function encrypt(message, receiverEncryptionPublicKey) {
-    const receiverPublicKeyBytes = Buffer.from(receiverEncryptionPublicKey, 'base64');
-    const messageBytes = Buffer.from(message, 'utf8');
+    const receiverPublicKeyBytes = naclUtil.decodeBase64(receiverEncryptionPublicKey);
+    const messageBytes = naclUtil.decodeUTF8(message);
     
-    // Generate ephemeral keypair
-    const ephemeralPrivateKey = x25519.utils.randomPrivateKey();
-    const ephemeralPublicKey = x25519.getPublicKey(ephemeralPrivateKey);
+    const ephemeralKeyPair = nacl.box.keyPair();
+    const nonce = nacl.randomBytes(nacl.box.nonceLength);
     
-    // Generate shared secret
-    const sharedSecret = x25519.getSharedSecret(ephemeralPrivateKey, receiverPublicKeyBytes);
-    
-    // Use first 32 bytes of shared secret as key for simple encryption
-    // In production, you might want to use a proper AEAD cipher
-    const key = sharedSecret.slice(0, 32);
-    
-    // Simple XOR encryption (for demonstration - use proper encryption in production)
-    const encryptedBytes = new Uint8Array(messageBytes.length);
-    for (let i = 0; i < messageBytes.length; i++) {
-        encryptedBytes[i] = messageBytes[i] ^ key[i % key.length];
-    }
+    const encryptedMessage = nacl.box(
+        messageBytes,
+        nonce,
+        receiverPublicKeyBytes,
+        ephemeralKeyPair.secretKey
+    );
     
     return {
-        encryptedMessage: Buffer.from(encryptedBytes).toString('base64'),
-        ephemeralPublicKey: Buffer.from(ephemeralPublicKey).toString('base64')
+        encryptedMessage: naclUtil.encodeBase64(encryptedMessage),
+        nonce: naclUtil.encodeBase64(nonce),
+        ephemeralPublicKey: naclUtil.encodeBase64(ephemeralKeyPair.publicKey)
     };
 }
 
 /**
  * Decrypts a message using the receiver's private key
- * @param {Object} encryptedData - Object containing encrypted message and ephemeral public key
+ * @param {Object} encryptedData - Object containing encrypted message, nonce, and ephemeral public key
  * @param {string} receiverEncryptionPrivateKey - Receiver's X25519 private key (base64 encoded)
  * @returns {string} Decrypted message if successful, null otherwise
  */
 function decrypt(encryptedData, receiverEncryptionPrivateKey) {
-    const receiverPrivateKeyBytes = Buffer.from(receiverEncryptionPrivateKey, 'base64');
-    const encryptedMessageBytes = Buffer.from(encryptedData.encryptedMessage, 'base64');
-    const ephemeralPublicKeyBytes = Buffer.from(encryptedData.ephemeralPublicKey, 'base64');
+    const receiverPrivateKeyBytes = naclUtil.decodeBase64(receiverEncryptionPrivateKey);
+    const encryptedMessageBytes = naclUtil.decodeBase64(encryptedData.encryptedMessage);
+    const nonceBytes = naclUtil.decodeBase64(encryptedData.nonce);
+    const ephemeralPublicKeyBytes = naclUtil.decodeBase64(encryptedData.ephemeralPublicKey);
     
-    // Generate shared secret
-    const sharedSecret = x25519.getSharedSecret(receiverPrivateKeyBytes, ephemeralPublicKeyBytes);
+    const decryptedMessage = nacl.box.open(
+        encryptedMessageBytes,
+        nonceBytes,
+        ephemeralPublicKeyBytes,
+        receiverPrivateKeyBytes
+    );
     
-    // Use first 32 bytes of shared secret as key
-    const key = sharedSecret.slice(0, 32);
-    
-    // Simple XOR decryption
-    const decryptedBytes = new Uint8Array(encryptedMessageBytes.length);
-    for (let i = 0; i < encryptedMessageBytes.length; i++) {
-        decryptedBytes[i] = encryptedMessageBytes[i] ^ key[i % key.length];
+    if (!decryptedMessage) {
+        return null;
     }
     
-    return Buffer.from(decryptedBytes).toString('utf8');
+    return naclUtil.encodeUTF8(decryptedMessage);
 }
 
 module.exports = {
-    generateMnemonicPhrase,
-    generateKeyPairFromMnemonic,
     generateKeyPair,
     sign,
     verify,
