@@ -1,6 +1,6 @@
 {
   "name": "vericrypt",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A secure message encryption and signing package using Ed25519 for signing and X25519 for encryption",
   "main": "index.js",
   "types": "index.d.ts",
