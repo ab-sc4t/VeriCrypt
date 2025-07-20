@@ -188,8 +188,6 @@ Decrypts a message using X25519.
 
 - `tweetnacl` - Proven cryptographic library for Ed25519 and X25519
 - `tweetnacl-util` - Utility functions for tweetnacl
-- `@noble/curves` - Additional cryptographic curves
-- `@noble/hashes` - Cryptographic hash functions
 
 ## License
 
